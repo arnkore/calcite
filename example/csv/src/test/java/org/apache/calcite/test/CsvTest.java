@@ -442,6 +442,70 @@ public class CsvTest {
     }
   }
 
+  @Test
+  public void testUnconditionalRewritesInValidate() throws SQLException {
+    final String sql = "select 1 + 1, * from emps e where e.name = 'arnkore'";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testFromSubquerySingleTableCase() throws SQLException {
+    final String sql = "select empno from (select * from emps) e where e.name = 'arnkore'";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testFromSubqueryMultiTableCase() throws SQLException {
+    final String sql = "select empno from depts, (select * from emps) e where e.name = 'arnkore'";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testPushDownJoinConditions() throws SQLException {
+    final String sql = "select empno from depts d join (select * from emps) e on e.deptno + 1 = d.deptno where e.name = 'arnkore'";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testScalaSubQuery() throws SQLException {
+    final String sql = "select * from emps e where e.deptno = (select d.deptno from depts d where d.name = 'Sales')";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testInSubQuery() throws SQLException {
+    final String sql = "select * from emps e where e.deptno in (select d.deptno from depts d)";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testExistsSubQuery() throws SQLException {
+    final String sql = "select * from emps e where exists " +
+            "(select 1 from depts d where e.deptno = d.deptno and d.name = 'Sales')";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testNotExistsSubQuery() throws SQLException {
+    final String sql = "select * from emps e where not exists " +
+            "(select 1 from depts d where e.deptno = d.deptno and d.name = 'Sales')";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testRewriteSome() {
+    final String sql = "select e.deptno, e.deptno < some (select deptno from emps) as v from emps as e";
+    sql("smart", sql).ok();
+  }
+
+  @Test
+  public void testRewriteCorrelateSome() {
+    final String sql = "select e.deptno, e.deptno < some (" +
+            "  select deptno from emps where emps.name = e.name) as v" +
+            "  from emps as e";
+    sql("smart", sql).ok();
+  }
+
   @Test public void testJoinOnString() throws SQLException {
     final String sql = "select * from emps\n"
         + "join depts on emps.name = depts.name";
